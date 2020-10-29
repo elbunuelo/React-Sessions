@@ -1,44 +1,22 @@
 import React from "react";
+import { connect } from "react-redux";
 
 import OrderItem from "../components/OrderItem";
 import Modal from "../components/Modal";
+import { DeleteFromCart, ChangeAmount } from "../actions";
 
-export default class Summary extends React.Component {
+export class Summary extends React.Component {
   constructor(props) {
     super(props);
 
     this.state = {
-      itemToDelete: null,
-      cart: [
-        {
-          id: 1,
-          name: "Large Coffee",
-          amount: 1,
-          unitPrice: 1.75
-        },
-        {
-          id: 2,
-          name: "Small Latte",
-          amount: 2,
-          unitPrice: 3.98
-        },
-        {
-          id: 3,
-          name: "Cream Cheese Bagel",
-          amount: 3,
-          unitPrice: 4.0
-        }
-      ]
+      itemToDelete: null
     };
   }
 
-  setAmount = (index, amount) => {
-    this.setState(state => {
-      const cart = [...state.cart];
-      cart[index].amount = amount;
-
-      return { cart };
-    });
+  setAmount = (item, amount) => {
+    const { dispatch } = this.props;
+    dispatch(ChangeAmount(item, amount));
   };
 
   showConfirmation = item => this.setState({ itemToDelete: item });
@@ -48,33 +26,39 @@ export default class Summary extends React.Component {
   };
 
   deleteItem = itemToDelete => {
-    this.setState(state => {
-      const { cart } = state;
-      return { cart: cart.filter(i => i.id !== itemToDelete.id) };
-    });
-    this.closeConfirmation();
+    const { dispatch } = this.props;
+    dispatch(DeleteFromCart(itemToDelete));
+    this.setState({ itemToDelete: null });
   };
 
   render() {
-    const { cart, itemToDelete } = this.state;
+    const { itemToDelete } = this.state;
+    const cart = Object.values(this.props.cart);
+
     return (
-      <div className="screen">
+      <>
         <div className="screen-title">Order Summary</div>
-        {cart.map((item, index) => (
+        {cart.length === 0 && (
+          <div className="empty-cart">There's nothing in your cart!</div>
+        )}
+        {cart.map(({ item, amount }, index) => (
           <OrderItem
             key={item.id}
             item={item}
-            setAmount={amount => this.setAmount(index, amount)}
+            amount={amount}
+            setAmount={amount => this.setAmount(item, amount)}
             onDelete={() => this.showConfirmation(item)}
           />
         ))}
         <div className="total">
           <div>Total</div>
           <div className="value">
-            {cart.reduce(
-              (total, item) => total + item.unitPrice * item.amount,
-              0
-            )}
+            {cart
+              .reduce(
+                (total, { item, amount }) => total + item.unitPrice * amount,
+                0
+              )
+              .toFixed(2)}
           </div>
         </div>
         <button className="check-out">Check Out</button>
@@ -86,7 +70,13 @@ export default class Summary extends React.Component {
             Are you sure you want to remove {itemToDelete.name}?
           </Modal>
         )}
-      </div>
+      </>
     );
   }
 }
+
+const mapStateToProps = state => ({
+  cart: state.cart
+});
+
+export default connect(mapStateToProps)(Summary);
